@@ -1,7 +1,9 @@
 "use client";
-import React, { ChangeEvent, FormEvent, useRef } from "react";
+
+import React, { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { Input, Textarea, Slider, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { generateCoverLetter } from "@/api/openapi";
 
 const CoverLetterForm = () => {
 	const jobTitleRef = useRef<HTMLInputElement>(null);
@@ -11,11 +13,23 @@ const CoverLetterForm = () => {
 	const creativityRef = useRef<HTMLElement>(null);
 	const fileRef = useRef<HTMLInputElement>(null);
 
+	const [isFormValid, setIsFormValid] = useState(false);
+
+	useEffect(() => {
+		const isValid =
+			jobTitleRef.current?.value?.trim() &&
+			companyRef.current?.value?.trim() &&
+			locationRef.current?.value?.trim() &&
+			jobDescriptionRef.current?.value?.trim();
+
+		setIsFormValid(Boolean(isValid));
+	}, []);
+
 	const handleFileChange = (_e: ChangeEvent<HTMLInputElement>) => {
 		// File handling is now done via ref
 	};
 
-	const handleSubmit = (e: FormEvent) => {
+	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 
 		const formData = {
@@ -27,8 +41,14 @@ const CoverLetterForm = () => {
 			file: fileRef.current?.files?.[0] ?? null,
 		};
 
-		// eslint-disable-next-line no-console
-		console.log(formData);
+		try {
+			const coverLetter = await generateCoverLetter(formData);
+
+			console.log("Generated Cover Letter:", coverLetter);
+			// Handle the generated cover letter (e.g., display it in the UI)
+		} catch (error) {
+			console.error("Error generating cover letter:", error);
+		}
 	};
 
 	return (
@@ -38,24 +58,28 @@ const CoverLetterForm = () => {
 				label="Job Title"
 				placeholder="Enter the job title"
 				startContent={<Icon icon="lucide:briefcase" />}
+				onChange={() => setIsFormValid(Boolean(jobTitleRef.current?.value?.trim()))}
 			/>
 			<Input
 				ref={companyRef}
 				label="Company"
 				placeholder="Enter the company name"
 				startContent={<Icon icon="lucide:building" />}
+				onChange={() => setIsFormValid(Boolean(jobTitleRef.current?.value?.trim()))}
 			/>
 			<Input
 				ref={locationRef}
 				label="Location"
 				placeholder="Enter the job location"
 				startContent={<Icon icon="lucide:map-pin" />}
+				onChange={() => setIsFormValid(Boolean(jobTitleRef.current?.value?.trim()))}
 			/>
 			<Textarea
 				ref={jobDescriptionRef}
 				label="Job Description"
 				minRows={4}
 				placeholder="Paste the job description here"
+				onChange={() => setIsFormValid(Boolean(jobTitleRef.current?.value?.trim()))}
 			/>
 			<div>
 				<label className="block text-small font-medium mb-1" htmlFor="creativity-slider">
@@ -86,7 +110,7 @@ const CoverLetterForm = () => {
 					onChange={handleFileChange}
 				/>
 			</div>
-			<Button color="primary" type="submit">
+			<Button color="primary" isDisabled={!isFormValid} type="submit">
 				Generate Cover Letter
 			</Button>
 		</form>
