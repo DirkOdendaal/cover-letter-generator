@@ -4,6 +4,7 @@ import React, { ChangeEvent, FormEvent, useEffect, useRef, useState } from "reac
 import { Input, Textarea, Slider, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { generateCoverLetter } from "@/api/openapi";
+import { parsePdf } from "@/utils/parser-helpers";
 
 const CoverLetterForm = () => {
 	const jobTitleRef = useRef<HTMLInputElement>(null);
@@ -11,7 +12,7 @@ const CoverLetterForm = () => {
 	const locationRef = useRef<HTMLInputElement>(null);
 	const jobDescriptionRef = useRef<HTMLTextAreaElement>(null);
 	const creativityRef = useRef<HTMLElement>(null);
-	const fileRef = useRef<HTMLInputElement>(null);
+	const [parsedResume, setParsedResume] = useState<string>("");
 
 	const [isFormValid, setIsFormValid] = useState(false);
 
@@ -25,8 +26,20 @@ const CoverLetterForm = () => {
 		setIsFormValid(Boolean(isValid));
 	}, []);
 
-	const handleFileChange = (_e: ChangeEvent<HTMLInputElement>) => {
-		// File handling is now done via ref
+	const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0];
+
+		if (!file) {
+			setParsedResume("");
+		}
+		if (file && file.type === "application/pdf") {
+			const text = await parsePdf(file);
+
+			setParsedResume(text);
+			console.log("Parsed Resume:", text);
+		} else {
+			setParsedResume("");
+		}
 	};
 
 	const handleSubmit = async (e: FormEvent) => {
@@ -38,14 +51,13 @@ const CoverLetterForm = () => {
 			location: locationRef.current?.value ?? "",
 			jobDescription: jobDescriptionRef.current?.value ?? "",
 			creativity: creativityRef.current?.getAttribute("aria-valuenow") ?? "50",
-			file: fileRef.current?.files?.[0] ?? null,
+			parsedResume,
 		};
 
 		try {
 			const coverLetter = await generateCoverLetter(formData);
 
 			console.log("Generated Cover Letter:", coverLetter);
-			// Handle the generated cover letter (e.g., display it in the UI)
 		} catch (error) {
 			console.error("Error generating cover letter:", error);
 		}
@@ -101,14 +113,7 @@ const CoverLetterForm = () => {
 				<label className="block text-small font-medium mb-1" htmlFor="cv-upload">
 					Upload CV
 				</label>
-				<Input
-					ref={fileRef}
-					accept=".pdf,.doc,.docx"
-					id="cv-upload"
-					placeholder="Select your CV file"
-					type="file"
-					onChange={handleFileChange}
-				/>
+				<Input accept=".pdf" id="cv-upload" placeholder="Select your CV file" type="file" onChange={handleFileUpload} />
 			</div>
 			<Button color="primary" isDisabled={!isFormValid} type="submit">
 				Generate Cover Letter

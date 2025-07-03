@@ -9,27 +9,34 @@ export const generateCoverLetter = async (formData: {
 	location: string;
 	jobDescription: string;
 	creativity: string;
+	parsedResume: string;
 }) => {
 	try {
 		const client = new OpenAI({
 			apiKey: process.env.OPENAI_API_KEY,
 		});
 
-		const inputText = `Job Title: ${formData.jobTitle} 
-    Company: ${formData.company} 
-    Location: ${formData.location} 
-    Job Description: ${formData.jobDescription} 
-    Creativity Level: ${formData.creativity}`;
+		const temperature = parseFloat(formData.creativity) / 100; // Map creativity level to temperature
 
-		const response = await client.responses.create({
-			model: "gpt-4.1",
-			input: `${prompts.coverLetter}${inputText}`,
-			temperature: parseFloat(formData.creativity) / 100, // Map creativity level to temperature
-		});
+		const payload = {
+			model: "gpt-4o-mini",
+			messages: [
+				{
+					role: "system" as const,
+					content: prompts.completeCoverLetter,
+				},
+				{
+					role: "user" as const,
+					content: `My Resume: ${formData.parsedResume}. Job Title: ${formData.jobTitle}. Company: ${formData.company}. Location: ${formData.location}. Job Description: ${formData.jobDescription}.`,
+				},
+			],
+			temperature,
+		};
 
-		return response.output_text; // Return the generated text
+		const response = await client.chat.completions.create(payload);
+
+		return response.choices[0]?.message?.content ?? "Failed to generate cover letter";
 	} catch (error) {
-		console.error("Error generating cover letter:", error);
-		throw new Error("Failed to generate cover letter");
+		throw new Error(`Failed to generate cover letter: ${error instanceof Error ? error.message : "Unknown error"}`);
 	}
 };
